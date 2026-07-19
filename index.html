@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>塔里克 E 技能刷新仿真计算器</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div class="layout-main">
+    <aside class="sidebar">
+      <div class="sidebar-title">塔里克 E 技能刷新模拟</div>
+      <div class="card">
+        <div class="card-title">预设方案</div>
+        <div class="preset-row">
+          <div class="preset-left">
+        <select id="presetSelect" aria-label="选择预设方案">
+          <option value="initZero">初始（0%/0）</option>
+          <option value="glacier">冰川增幅（30%/62）</option>
+          <option value="lethal">致命节奏（66%/52/15）</option>
+        </select>
+          </div>
+          <div class="preset-desc" id="presetDesc">选择预设方案以查看详细说明</div>
+        </div>
+      </div>
+    </aside>
+    <div class="content-main">
+      <div class="card">
+        <div class="card-title">输入变量</div>
+        <div class="input-grid">
+          <div class="input-group">
+            <label for="bonusAS">额外攻速 (BonusAS%)</label>
+            <input type="number" id="bonusAS" value="0" step="1" min="0" max="150">
+            <input type="range" id="bonusASRange" min="0" max="150" step="1" value="0">
+          </div>
+          <div class="input-group">
+            <label for="haste">急速</label>
+            <input type="number" id="haste" value="0" step="1" min="0" max="150">
+            <input type="range" id="hasteRange" min="0" max="150" step="1" value="0">
+          </div>
+          <div class="input-group">
+            <label for="baseHaste">基础急速（小技能）</label>
+            <input type="number" id="baseHaste" value="0" step="0.5" min="0" max="60">
+            <input type="range" id="baseHasteRange" min="0" max="60" step="0.5" value="0">
+          </div>
+          <div class="input-group">
+            <label for="level">英雄等级 (Level)</label>
+            <input type="number" id="level" value="9" step="1" min="1" max="18">
+            <input type="range" id="levelRange" min="1" max="18" step="1" value="9">
+          </div>
+          <div class="input-group">
+            <label for="eCdRaw">E 基础冷却 (E_CD_raw)</label>
+            <input type="number" id="eCdRaw" value="12" step="1" min="12" max="16">
+            <input type="range" id="eCdRawRange" min="12" max="16" step="1" value="12">
+          </div>
+          <div class="input-group">
+            <label for="mode">模式</label>
+            <select id="mode">
+              <option value="1">普通</option>
+              <option value="0.85">迅刃</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" id="applyHasteBtn" disabled aria-label="添加下一档所需急速值">添加下一档所需急速</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">E技能刷新理论数据</div>
+        <div id="resultArea" aria-live="polite" role="status"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
