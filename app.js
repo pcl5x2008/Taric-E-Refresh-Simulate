@@ -8,6 +8,13 @@ const Q_CD_raw_const = 3;
 const GROW_AS_LV18 = 0.34;
 const MAX_X = 10;
 
+// x: 1(快) → 10(慢)  绿(140°) → 红(0°)，与全局 绿/红 配色一致
+function xGradientColor(x) {
+  const t = (x - 1) / (MAX_X - 1);
+  const hue = 140 * (1 - t);
+  return `hsl(${hue.toFixed(0)}, 72%, 56%)`;
+}
+
 let lastExtraHaste = null;
 
 function clampNumber(id, min, max, def) {
@@ -242,7 +249,7 @@ function calc() {
         <div class="hero-left">
           <div class="hero-stat">
             <span class="hero-label">第</span>
-            <span class="hero-number">${refreshX}</span>
+            <span class="hero-number" style="color:${xGradientColor(refreshX)}">${refreshX}</span>
             <span class="hero-label">次</span>
           </div>
           <div class="hero-meta">
@@ -256,8 +263,16 @@ function calc() {
             <div class="hero-r-value ${redundantAS !== null && redundantAS >= 0.1 ? 'green-text' : 'gold-text'}">${redundantAS !== null ? (Math.max(0, redundantAS) * 100).toFixed(1) : '-'}%</div>
           </div>
           <div class="hero-r-item">
+            <div class="hero-r-label">Q 施法超出后摇</div>
+            <div class="hero-r-sub ${nextAWaitArr[2] !== 0 ? 'gold-text' : ''}">${nextAWaitArr[2].toFixed(3)}s</div>
+          </div>
+          <div class="hero-r-item">
             <div class="hero-r-label">${extraLabel}</div>
             <div class="hero-r-value ${extraHaste !== null && extraHaste > 0 ? 'green-text' : 'red-text'}">${extraVal}</div>
+          </div>
+          <div class="hero-r-item">
+            <div class="hero-r-label">QCD 在 AA 后剩余</div>
+            <div class="hero-r-sub ${QRemainTmpArr[2] !== 0 ? 'gold-text' : ''}">${QRemainTmpArr[2].toFixed(3)}s</div>
           </div>
         </div>
       </div>
@@ -270,7 +285,7 @@ function calc() {
         </div>
         <div class="result-item">
           <div class="label">前摇 / 后摇</div>
-          <div class="value sm">${CurrentWindup.toFixed(3)}s / ${CurrentBackswing.toFixed(3)}s</div>
+          <div class="value sm">${CurrentWindup.toFixed(3)}s / <span class="${CurrentBackswing <= 0.25 ? 'gold-text' : ''}">${CurrentBackswing.toFixed(3)}s</span></div>
         </div>
         <div class="result-item">
           <div class="label">E 冷却（实际）</div>
@@ -281,16 +296,6 @@ function calc() {
           <div class="label">被动减 CD</div>
           <div class="value">${CDPA.toFixed(3)} s</div>
           <div class="detail">每次命中减 ${CDPA.toFixed(2)}s</div>
-        </div>
-        <div class="result-item">
-          <div class="label">Q 施法超出后摇</div>
-          <div class="value sm">${nextAWaitArr[2].toFixed(3)}s</div>
-          <div class="detail">Q 施法时间 − 后摇（正值导致延迟）</div>
-        </div>
-        <div class="result-item">
-          <div class="label">QCD 在 AA 后剩余</div>
-          <div class="value sm">${QRemainTmpArr[2].toFixed(3)}s</div>
-          <div class="detail">第 2 次平 A 后 Q 冷却余量</div>
         </div>
       </div>`;
   } else {
@@ -308,13 +313,17 @@ function setInput(id, val) {
 
 function applyExtraHaste() {
   if (lastExtraHaste === null || lastExtraHaste <= 0) return;
-  const cur = parseFloat(document.getElementById('haste').value) || 0;
-  setInput('haste', cur + lastExtraHaste);
+  const el = document.getElementById('haste');
+  const max = parseFloat(el.max) || 150;
+  const cur = parseFloat(el.value) || 0;
+  setInput('haste', Math.min(max, cur + lastExtraHaste));
   calc();
 }
 
 function applyPreset(type) {
   if (!type) { document.getElementById('presetDesc').innerHTML = '<span class="line line-main">选择预设方案以查看详细说明</span>'; return; }
+  setInput('eCdRaw', 12);
+  setInput('mode', 1);
   const desc = document.getElementById('presetDesc');
   if (type === 'initZero') {
     setInput('level', 9);
@@ -329,7 +338,7 @@ function applyPreset(type) {
     setInput('bonusAS', 30);
     setInput('haste', 62);
     setInput('baseHaste', 0);
-    desc.innerHTML = '<span class="line line-main">冰川增幅（30/62） —— <span class="hl">30%攻速</span> / <span class="hl2">62急速</span> / <span class="hl3">0基础急速</span></span>' +
+    desc.innerHTML =       '<span class="line line-main">冰川增幅（30%/62） —— <span class="hl">30%攻速</span> / <span class="hl2">62急速</span> / <span class="hl3">0基础急速</span></span>' +
       '<span class="line"><span class="tag-rune">符文</span><span class="line-label">冰川+多面手+超然+小急速 = 27急速</span></span>' +
       '<span class="line"><span class="tag-item">装备</span><span class="line-label">cd鞋+眼泪+燃烧宝石+音管 = 30%攻速 + 35急速</span></span>';
   } else if (type === 'lethal') {
@@ -337,7 +346,7 @@ function applyPreset(type) {
     setInput('bonusAS', 66);
     setInput('haste', 52);
     setInput('baseHaste', 15);
-    desc.innerHTML = '<span class="line line-main">致命节奏（66/52/15） —— <span class="hl">66%攻速</span> / <span class="hl2">52急速</span> / <span class="hl3">15基础急速</span></span>' +
+    desc.innerHTML =       '<span class="line line-main">致命节奏（66%/52/15） —— <span class="hl">66%攻速</span> / <span class="hl2">52急速</span> / <span class="hl3">15基础急速</span></span>' +
       '<span class="line"><span class="tag-rune">符文</span><span class="line-label">致命节奏+传说急速+小急速 = 36%攻速 + 17急速 + 15基础急速</span></span>' +
       '<span class="line"><span class="tag-item">装备</span><span class="line-label">cd鞋+眼泪+燃烧宝石+音管 = 30%攻速 + 35急速</span></span>';
   }

@@ -118,15 +118,16 @@ h1 {
   background: linear-gradient(90deg, var(--neon), var(--neon-2));
   opacity: 0.5;
 }
-.hero-left { display: flex; flex-direction: column; gap: 8px; }
+.hero-left { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
 .hero-stat { display: flex; align-items: baseline; gap: 6px; }
 .hero-number { font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--text); }
 .hero-label { font-size: 16px; color: var(--muted); }
 .hero-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .hero-time { font-size: 17px; font-weight: 600; white-space: nowrap; }
-.hero-right { display: flex; gap: 20px; margin-left: auto; text-align: right; }
+.hero-right { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 20px; margin-left: auto; text-align: right; }
 .hero-r-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .hero-r-value { font-size: 19px; font-weight: 700; line-height: 1.3; }
+.hero-r-sub { font-size: 16px; font-weight: 700; line-height: 1.25; margin-bottom: 3px; }
 .badge-pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 13px; border-radius: 20px; font-size: 13.8px; font-weight: 600;
@@ -138,7 +139,7 @@ h1 {
 
 .result-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 .result-item {
@@ -180,6 +181,7 @@ h1 {
   .input-grid { grid-template-columns: repeat(2, 1fr); }
   .hero-number { font-size: 40px; }
   .hero-right { margin-left: 0; text-align: center; justify-content: center; }
+  .result-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 480px) {
   .input-grid { grid-template-columns: 1fr; }
