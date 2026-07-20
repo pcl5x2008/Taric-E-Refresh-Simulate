@@ -8,82 +8,87 @@
 </head>
 <body>
 <div class="container">
+  <div class="page-header">塔里克 E 技能刷新模拟</div>
   <div class="layout-main">
-    <aside class="sidebar">
-      <div class="sidebar-title">塔里克 E 技能刷新模拟</div>
-      <div class="card">
-        <div class="card-title">预设方案</div>
-        <div class="preset-row">
-          <div class="preset-left">
-        <select id="presetSelect" aria-label="选择预设方案">
-          <option value="initZero">初始（0%/0）</option>
-          <option value="glacier">冰川增幅（30%/62）</option>
-          <option value="lethal">致命节奏（66%/52/15）</option>
-        </select>
-          </div>
-          <div class="preset-desc" id="presetDesc">选择预设方案以查看详细说明</div>
+    <div class="card sidebar-doc">
+      <div class="doc-content">
+        <div class="doc-title">说明文档</div>
+        <p class="doc-line">选择预设方案快速加载，或直接拖拽滑块调整参数，实时模拟E技能刷新。</p>
+        <p class="doc-line">点击按钮可以快速到达阈值。</p>
+        <p class="doc-line"><span class="badge-doc badge-doc-green">●</span> 命中立刻刷新 —— 最后一击出伤害瞬间刷新</p>
+        <p class="doc-line"><span class="badge-doc badge-doc-gold">●</span> 命中后摇内刷新 —— 最后一击完整时间内刷新</p>
+        <p class="doc-line"><span class="badge-doc badge-doc-gold">●</span> 施法超出后摇 —— 高攻速因施法前摇拖慢</p>
+        <p class="doc-line"><span class="badge-doc badge-doc-gold">●</span> QCD 在 AA 后剩余 —— 高攻速低急速A两下Q技能尚未刷新</p>
+      </div>
+    </div>
+    <div class="card main-input">
+      <div class="card-title">输入变量</div>
+      <div class="input-grid">
+        <div class="input-group">
+          <label for="bonusAS">额外攻速 (BonusAS%)</label>
+          <input type="number" id="bonusAS" value="0" step="1" min="0" max="150">
+          <input type="range" id="bonusASRange" min="0" max="150" step="1" value="0">
+        </div>
+        <div class="input-group">
+          <label for="haste">急速</label>
+          <input type="number" id="haste" value="0" step="1" min="0" max="150">
+          <input type="range" id="hasteRange" min="0" max="150" step="1" value="0">
+        </div>
+        <div class="input-group">
+          <label for="baseHaste">基础急速（小技能）</label>
+          <input type="number" id="baseHaste" value="0" step="0.5" min="0" max="60">
+          <input type="range" id="baseHasteRange" min="0" max="60" step="0.5" value="0">
+        </div>
+        <div class="input-group">
+          <label for="level">英雄等级 (Level)</label>
+          <input type="number" id="level" value="9" step="1" min="1" max="18">
+          <input type="range" id="levelRange" min="1" max="18" step="1" value="9">
+        </div>
+        <div class="input-group">
+          <label for="eCdRaw">E 基础冷却 (E_CD_raw)</label>
+          <input type="number" id="eCdRaw" value="12" step="1" min="12" max="16">
+          <input type="range" id="eCdRawRange" min="12" max="16" step="1" value="12">
+        </div>
+        <div class="input-group">
+          <label for="mode">模式</label>
+          <select id="mode">
+        <option value="0">普通</option>
+        <option value="0.15">纳沃利</option>
+          </select>
         </div>
       </div>
-    </aside>
-    <div class="content-main">
-      <div class="card">
-        <div class="card-title">输入变量</div>
-        <div class="input-grid">
-          <div class="input-group">
-            <label for="bonusAS">额外攻速 (BonusAS%)</label>
-            <input type="number" id="bonusAS" value="0" step="1" min="0" max="150">
-            <input type="range" id="bonusASRange" min="0" max="150" step="1" value="0">
-          </div>
-          <div class="input-group">
-            <label for="haste">急速</label>
-            <input type="number" id="haste" value="0" step="1" min="0" max="150">
-            <input type="range" id="hasteRange" min="0" max="150" step="1" value="0">
-          </div>
-          <div class="input-group">
-            <label for="baseHaste">基础急速（小技能）</label>
-            <input type="number" id="baseHaste" value="0" step="0.5" min="0" max="60">
-            <input type="range" id="baseHasteRange" min="0" max="60" step="0.5" value="0">
-          </div>
-          <div class="input-group">
-            <label for="level">英雄等级 (Level)</label>
-            <input type="number" id="level" value="9" step="1" min="1" max="18">
-            <input type="range" id="levelRange" min="1" max="18" step="1" value="9">
-          </div>
-          <div class="input-group">
-            <label for="eCdRaw">E 基础冷却 (E_CD_raw)</label>
-            <input type="number" id="eCdRaw" value="12" step="1" min="12" max="16">
-            <input type="range" id="eCdRawRange" min="12" max="16" step="1" value="12">
-          </div>
-          <div class="input-group">
-            <label for="mode">模式</label>
-            <select id="mode">
-          <option value="0">普通</option>
-          <option value="0.15">纳沃利</option>
-            </select>
-          </div>
-        </div>
-        <div class="haste-actions">
-          <button class="btn" id="prevTierBtn" disabled>上一档:0急速</button>
-          <button class="btn" id="applyHasteBtn" disabled aria-label="添加下一档所需急速值">下一档:0急速</button>
-        </div>
+      <div class="haste-actions">
+        <button class="btn" id="prevTierBtn" disabled>上一档:0急速</button>
+        <button class="btn" id="applyHasteBtn" disabled aria-label="添加下一档所需急速值">下一档:0急速</button>
       </div>
-
-      <div class="card">
-        <div class="card-title">E技能刷新理论数据</div>
-        <div id="resultArea" aria-live="polite" role="status"></div>
+    </div>
+    <div class="card sidebar-preset">
+      <div class="card-title">预设方案</div>
+      <div class="preset-row">
+        <div class="preset-left">
+      <select id="presetSelect" aria-label="选择预设方案">
+        <option value="initZero">初始（0%/0）</option>
+        <option value="glacier">冰川增幅（30%/62）</option>
+        <option value="lethal">致命节奏（66%/52/15）</option>
+      </select>
+        </div>
+        <div class="preset-desc" id="presetDesc">选择预设方案以查看详细说明</div>
       </div>
+    </div>
+    <div class="card main-result">
+      <div class="card-title">E技能刷新理论数据</div>
+      <div id="resultArea" aria-live="polite" role="status"></div>
     </div>
   </div>
 
-  <!-- ===== 作者署名 ===== -->
-  <footer class="card author-card">
+  <!-- ===== 作者署名（底部水平排列） ===== -->
+  <footer class="author-bar">
     <div class="author-head">
       <span class="author-avatar">P</span>
       <div class="author-id">
         <div class="author-name">作者：pcl5x2008</div>
       </div>
     </div>
-
     <div class="author-links">
       <div class="author-chip chip-bili">
         <a class="chip-body" href="https://search.bilibili.com/upuser?keyword=pcl5x2008" target="_blank" rel="noopener">
@@ -95,7 +100,6 @@
         </a>
         <button class="chip-copy" data-copy="pcl5x2008" type="button">复制</button>
       </div>
-
       <div class="author-chip chip-live">
         <a class="chip-body" href="https://live.bilibili.com/17089" target="_blank" rel="noopener">
           <span class="chip-icon">▶</span>
@@ -106,7 +110,6 @@
         </a>
         <button class="chip-copy" data-copy="17089" type="button">复制</button>
       </div>
-
       <div class="author-chip chip-qq">
         <a class="chip-body" href="https://wpa.qq.com/msgrd?v=3&uin=1279334244&site=qq&menu=yes" target="_blank" rel="noopener">
           <span class="chip-icon">Q</span>
@@ -118,9 +121,8 @@
         <button class="chip-copy" data-copy="1279334244" type="button">复制</button>
       </div>
     </div>
-
-    <div class="author-footnote">觉得计算器好用？关注主播谢谢喵。</div>
   </footer>
+  <div class="author-footnote">觉得计算器好用？关注主播谢谢喵。</div>
 </div>
 
 <script src="app.js"></script>
