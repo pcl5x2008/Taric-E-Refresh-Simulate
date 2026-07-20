@@ -205,12 +205,14 @@ h1 {
 }
 @media (max-width: 768px) {
   .input-grid { grid-template-columns: repeat(2, 1fr); }
+  .haste-actions { grid-template-columns: repeat(2, 1fr); }
   .hero-number { font-size: 40px; }
   .hero-right { margin-left: 0; text-align: center; justify-content: center; }
   .result-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 480px) {
   .input-grid { grid-template-columns: 1fr; }
+  .haste-actions { grid-template-columns: 1fr; }
   body { padding: 12px; }
   .card { padding: 14px 16px; }
   .result-hero { flex-direction: column; align-items: center; text-align: center; }
@@ -218,6 +220,5 @@ h1 {
   .hero-meta { justify-content: center; }
   .hero-right { justify-content: center; }
   .result-grid { grid-template-columns: 1fr; }
-  .haste-actions .btn { flex: 1 1 100%; }
   .input-group input, .input-group select { font-size: 16px; }
 }
