@@ -74,8 +74,79 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== 作者署名 ===== -->
+  <footer class="card author-card">
+    <div class="author-head">
+      <span class="author-avatar">P</span>
+      <div class="author-id">
+        <div class="author-name">作者：pcl5x2008</div>
+      </div>
+    </div>
+
+    <div class="author-links">
+      <div class="author-chip chip-bili">
+        <a class="chip-body" href="https://search.bilibili.com/upuser?keyword=pcl5x2008" target="_blank" rel="noopener">
+          <span class="chip-icon">B</span>
+          <span class="chip-text">
+            <span class="chip-label">哔哩哔哩</span>
+            <span class="chip-value">pcl5x2008</span>
+          </span>
+        </a>
+        <button class="chip-copy" data-copy="pcl5x2008" type="button">复制</button>
+      </div>
+
+      <div class="author-chip chip-live">
+        <a class="chip-body" href="https://live.bilibili.com/17089" target="_blank" rel="noopener">
+          <span class="chip-icon">▶</span>
+          <span class="chip-text">
+            <span class="chip-label">直播间</span>
+            <span class="chip-value">B站 17089</span>
+          </span>
+        </a>
+        <button class="chip-copy" data-copy="17089" type="button">复制</button>
+      </div>
+
+      <div class="author-chip chip-qq">
+        <a class="chip-body" href="https://wpa.qq.com/msgrd?v=3&uin=1279334244&site=qq&menu=yes" target="_blank" rel="noopener">
+          <span class="chip-icon">Q</span>
+          <span class="chip-text">
+            <span class="chip-label">QQ</span>
+            <span class="chip-value">1279334244</span>
+          </span>
+        </a>
+        <button class="chip-copy" data-copy="1279334244" type="button">复制</button>
+      </div>
+    </div>
+
+    <div class="author-footnote">觉得计算器好用？关注主播谢谢喵。</div>
+  </footer>
 </div>
 
 <script src="app.js"></script>
+<script>
+// ===== 作者署名：一键复制 =====
+document.querySelectorAll('.chip-copy').forEach(btn => {
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = btn.dataset.copy;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    const old = btn.textContent;
+    btn.textContent = '已复制 ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  });
+});
+</script>
 </body>
 </html>
