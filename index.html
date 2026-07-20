@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>塔里克 E 技能刷新仿真计算器</title>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -57,12 +57,15 @@
           <div class="input-group">
             <label for="mode">模式</label>
             <select id="mode">
-              <option value="1">普通</option>
-              <option value="0.85">迅刃</option>
+          <option value="0">普通</option>
+          <option value="0.15">纳沃利</option>
             </select>
           </div>
         </div>
-        <button class="btn" id="applyHasteBtn" disabled aria-label="添加下一档所需急速值">添加下一档所需急速</button>
+        <div class="haste-actions">
+          <button class="btn" id="prevTierBtn" disabled>上一档:0急速</button>
+          <button class="btn" id="applyHasteBtn" disabled aria-label="添加下一档所需急速值">下一档:0急速</button>
+        </div>
       </div>
 
       <div class="card">

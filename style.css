@@ -71,10 +71,30 @@ h1 {
   background: linear-gradient(135deg, var(--neon), var(--neon-2));
   color: #0a0a0f; border: none; border-radius: 24px;
   padding: 10px 36px; font-size: 16px; font-weight: 600; cursor: pointer;
-  transition: all 0.15s ease; margin-top: 8px;
+  transition: all 0.15s ease;
   box-shadow: 0 0 14px rgba(0,229,255,0.4), 0 0 22px rgba(255,43,214,0.25);
+  min-height: 44px; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
 }
-.btn:hover { filter: brightness(1.1); }
+@media (hover: hover) {
+  .btn:hover { filter: brightness(1.1); }
+}
+.btn:active { transform: scale(0.97); }
+
+#applyHasteBtn,
+#prevTierBtn {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.haste-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 16px;
+  margin-top: 8px;
+}
+.haste-actions .btn { width: 100%; }
+.btn-ghost { background: transparent; color: var(--neon); border: 1px solid rgba(0,229,255,0.55); box-shadow: none; }
+.btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; background: transparent; box-shadow: none; }
 
 .preset-row { display: flex; align-items: stretch; gap: 14px; flex-wrap: wrap; }
 .preset-row .preset-left { flex: 0 0 auto; display: flex; align-items: center; }
@@ -137,6 +157,12 @@ h1 {
 .badge-swing { background: rgba(255,210,63,0.10); color: #ffd23f; border-color: rgba(255,210,63,0.5); }
 .badge-none { background: rgba(255,77,109,0.10); color: #ff4d6d; border-color: rgba(255,77,109,0.5); }
 
+.result-hero.flash { animation: heroFlash 0.6s ease; }
+@keyframes heroFlash {
+  0% { box-shadow: 0 0 0 1px rgba(0,229,255,0.8), 0 0 26px rgba(0,229,255,0.45); }
+  100% { box-shadow: none; }
+}
+
 .result-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -167,7 +193,7 @@ h1 {
 .content-main { flex: 1; min-width: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
 @media (max-width: 900px) {
   .layout-main { flex-direction: column; }
@@ -192,4 +218,6 @@ h1 {
   .hero-meta { justify-content: center; }
   .hero-right { justify-content: center; }
   .result-grid { grid-template-columns: 1fr; }
+  .haste-actions .btn { flex: 1 1 100%; }
+  .input-group input, .input-group select { font-size: 16px; }
 }
