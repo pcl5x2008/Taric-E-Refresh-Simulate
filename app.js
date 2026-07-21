@@ -353,9 +353,19 @@ function calc() {
       }
     }
 
+    // 整数验证：从 hi 向下遍历，找到满足条件的最大整数值
+    let verifiedAS = lo;
+    for (let h = Math.ceil(hi); h >= Math.floor(lo); h--) {
+      const r = simulate(h, haste);
+      if (r !== null && r.x === refreshX && r.isHit === isHit) {
+        verifiedAS = h;
+        break;
+      }
+    }
+
     redundantAS = Math.max(
       0,
-      Math.min(lo - bonusAS, maxBonusAS - bonusAS)
+      Math.min(verifiedAS - bonusAS, maxBonusAS - bonusAS)
     );
   }
 
@@ -475,7 +485,7 @@ function calc() {
       let hi = haste + 500;
       let mid;
 
-      while (hi - lo > 0.01) {
+      while (hi - lo > 0.005) {
         mid = (lo + hi) / 2;
         const r = simulate(bonusAS, mid);
 
@@ -486,7 +496,15 @@ function calc() {
         }
       }
 
-      extraHaste = Math.max(0, Math.ceil(hi - haste));
+      // 整数验证：从 lo 向上遍历，找到满足条件的最小整数值
+      extraHaste = null;
+      for (let h = Math.ceil(lo); h <= Math.ceil(hi) + 2; h++) {
+        const r = simulate(bonusAS, h);
+        if (r && r.x < refreshX) {
+          extraHaste = Math.max(0, h - haste);
+          break;
+        }
+      }
     }
   } else if (!isHit && refreshX !== null) {
     const cMax = cdConditionAtX(bonusAS, haste + 500, refreshX);
@@ -496,7 +514,7 @@ function calc() {
       let hi = haste + 500;
       let mid;
 
-      while (hi - lo > 0.01) {
+      while (hi - lo > 0.005) {
         mid = (lo + hi) / 2;
         const r = cdConditionAtX(bonusAS, mid, refreshX);
 
@@ -507,7 +525,15 @@ function calc() {
         }
       }
 
-      extraHaste = Math.max(0, Math.ceil(hi - haste));
+      // 整数验证：从 lo 向上遍历，找到满足条件的最小整数值
+      extraHaste = null;
+      for (let h = Math.ceil(lo); h <= Math.ceil(hi) + 2; h++) {
+        const r = cdConditionAtX(bonusAS, h, refreshX);
+        if (r === 1) {
+          extraHaste = Math.max(0, h - haste);
+          break;
+        }
+      }
     }
   }
 
