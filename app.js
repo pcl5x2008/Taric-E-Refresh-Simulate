@@ -75,7 +75,7 @@ function clampNumber(id, min, max, def) {
   if (!el) return;
 
   let v = parseFloat(el.value);
-  if (isNaN(v) || v < min) v = def !== undefined ? def : min;
+  if (isNaN(v) || v < min) v = (def !== undefined && !isNaN(def)) ? def : min;
   if (v > max) v = max;
 
   el.value = v;
@@ -85,7 +85,7 @@ function clampNumber(id, min, max, def) {
 }
 
 function calc() {
-  let Level = parseFloat(document.getElementById('level').value);
+  let Level = parseInt(document.getElementById('level').value, 10);
   if (isNaN(Level) || Level < 1) Level = 1;
   if (Level > 18) Level = 18;
 
@@ -264,6 +264,12 @@ function calc() {
     isHit = false;
   }
 
+  function computeRank(x, isHit) {
+    if (x === null) return null;
+    return x * 2 + (isHit ? 0 : 1);
+  }
+  const currentRank = computeRank(refreshX, isHit);
+
   /**
    * 用于二分搜索的仿真函数。
    * 返回最早触发刷新的次数与类型。
@@ -353,192 +359,43 @@ function calc() {
       }
     }
 
-    // 整数验证：从 hi 向下遍历，找到满足条件的最大整数值
-    let verifiedAS = lo;
-    for (let h = Math.ceil(hi); h >= Math.floor(lo); h--) {
-      const r = simulate(h, haste);
-      if (r !== null && r.x === refreshX && r.isHit === isHit) {
-        verifiedAS = h;
-        break;
-      }
-    }
-
     redundantAS = Math.max(
       0,
-      Math.min(verifiedAS - bonusAS, maxBonusAS - bonusAS)
+      Math.min(lo - bonusAS, maxBonusAS - bonusAS)
     );
   }
 
-  /**
-   * 检查指定次数 x 结束时 E 的状态：
-   * 1  = 命中立刻刷新
-   * 0  = 后摇内刷新
-   * null = 未进入刷新条件
-   */
-  function cdConditionAtX(bAS, h, targetX) {
-    const totalH = baseHaste + h;
-    const cdr = totalH / (totalH + 100);
-
-    const tAS = Math.min((BaseAS + (bAS + growAS) * ASRatio) * 2, 3.003);
-    const at = 1 / tAS;
-
-    const bw = WindupPct / BaseAS;
-    const cw = bw + WindupMod * (at * WindupPct - bw);
-    const cbs = at - cw;
-
-    const qcd = Q_CD_raw * (1 - cdr);
-    const ecd = E_CD_raw * (1 - cdr);
-    const cdpa = 1 + h / (h + 100);
-
-    let qr = qcd;
-    let ct = 0;
-    let cd = ecd;
-
-    for (let i = 1; i <= targetX; i++) {
-      const lca = i === 1 ? cw : at;
-
-      const qPrev = qr;
-      const qExtra = extraCdReduce(qPrev, coeff, cw);
-      const qTmp = Math.max(0, qPrev - lca - qExtra - cdpa);
-
-      if (i % 2 === 0) {
-        qr = qcd;
-      } else {
-        qr = qTmp;
+  function findMinimalHaste(bAS, startHaste, rank) {
+    const maxHaste = Math.min(startHaste + 100, 150);
+    for (let h = startHaste; h <= maxHaste; h++) {
+      const r = simulate(bAS, h);
+      if (r && computeRank(r.x, r.isHit) < rank) {
+        return h - startHaste;
       }
-
-      const tr = i <= 2 ? 0 : 1 - (i % 2);
-
-      let qg = 0;
-      if (tr !== 0) {
-        qg = qTmp;
-      }
-
-      const nw =
-        (1 - (i % 2)) * Math.max(QCastingTime - cbs, 0);
-
-      const prev = ct;
-      ct = ct + lca + qg + nw;
-      const lct = ct - prev;
-
-      const cdPrev = cd;
-      const cdExtra = extraCdReduce(cdPrev, coeff, cw);
-      cd = cdPrev - lct - cdExtra - cdpa;
     }
-
-    if (cd <= 0) return 1;
-    if (cd > 0 && cd <= cbs) return 0;
     return null;
   }
 
-  function prevTierFloorHaste(bAS, h, refreshX, isHit) {
-    if (refreshX === null) return null;
-    let tX, tIsHit;
-    if (isHit) {
-      tX = refreshX;
-      tIsHit = false;
-    } else if (refreshX < 10) {
-      tX = refreshX + 1;
-      tIsHit = true;
-    } else {
-      return null;
-    }
-    let lo = 0, hi = h, mid;
-    while (hi - lo > 0.01) {
-      mid = (lo + hi) / 2;
-      const r = simulate(bAS, mid);
-      if (r !== null && (r.x < tX || (r.x === tX && (!tIsHit || r.isHit)))) {
-        hi = mid;
-      } else {
-        lo = mid;
-      }
-    }
-    let candidate = Math.floor(hi);
-    const target = { x: tX, isHit: tIsHit };
-    let r = simulate(bAS, candidate);
-    if (r && r.x === target.x && r.isHit === target.isHit) {
-      // use candidate
-    } else {
-      candidate = Math.ceil(hi);
-      r = simulate(bAS, candidate);
-      if (!r || r.x !== target.x || r.isHit !== target.isHit) {
-        return null;
-      }
-    }
-    return Math.max(0, candidate);
-  }
-
-  // 计算"少A一次 / 命中刷新"所需额外急速
   let extraHaste = null;
 
-  if (isHit && refreshX !== null && refreshX > 1) {
-    const curX = simulate(bonusAS, haste);
-    const hiMax = simulate(bonusAS, haste + 500);
+  if (refreshX !== null && currentRank !== null && currentRank > 2) {
+    extraHaste = findMinimalHaste(bonusAS, haste, currentRank);
+  }
 
-    if (
-      curX !== null &&
-      curX.x <= refreshX &&
-      hiMax !== null &&
-      hiMax.x < refreshX
-    ) {
-      let lo = haste;
-      let hi = haste + 500;
-      let mid;
-
-      while (hi - lo > 0.005) {
-        mid = (lo + hi) / 2;
-        const r = simulate(bonusAS, mid);
-
-        if (r !== null && r.x < refreshX) {
-          hi = mid;
-        } else {
-          lo = mid;
-        }
-      }
-
-      // 整数验证：从 lo 向上遍历，找到满足条件的最小整数值
-      extraHaste = null;
-      for (let h = Math.ceil(lo); h <= Math.ceil(hi) + 2; h++) {
-        const r = simulate(bonusAS, h);
-        if (r && r.x < refreshX) {
-          extraHaste = Math.max(0, h - haste);
-          break;
-        }
+  function prevTierFloorHaste(bAS, h, rank) {
+    if (rank === null || rank >= 21) return null;
+    const targetRank = rank + 1;
+    for (let hh = 0; hh <= h; hh++) {
+      const r = simulate(bAS, hh);
+      if (r && computeRank(r.x, r.isHit) === targetRank) {
+        return hh;
       }
     }
-  } else if (!isHit && refreshX !== null) {
-    const cMax = cdConditionAtX(bonusAS, haste + 500, refreshX);
-
-    if (cMax === 1) {
-      let lo = haste;
-      let hi = haste + 500;
-      let mid;
-
-      while (hi - lo > 0.005) {
-        mid = (lo + hi) / 2;
-        const r = cdConditionAtX(bonusAS, mid, refreshX);
-
-        if (r === 1) {
-          hi = mid;
-        } else {
-          lo = mid;
-        }
-      }
-
-      // 整数验证：从 lo 向上遍历，找到满足条件的最小整数值
-      extraHaste = null;
-      for (let h = Math.ceil(lo); h <= Math.ceil(hi) + 2; h++) {
-        const r = cdConditionAtX(bonusAS, h, refreshX);
-        if (r === 1) {
-          extraHaste = Math.max(0, h - haste);
-          break;
-        }
-      }
-    }
+    return null;
   }
 
   lastExtraHaste = extraHaste;
-  lastPrevTierHaste = prevTierFloorHaste(bonusAS, haste, refreshX, isHit);
+  lastPrevTierHaste = prevTierFloorHaste(bonusAS, haste, currentRank);
   const prevBtn = document.getElementById('prevTierBtn');
   if (prevBtn) {
     prevBtn.disabled = lastPrevTierHaste === null;
@@ -549,7 +406,8 @@ function calc() {
   if (applyBtn) {
     const canApply = extraHaste !== null && extraHaste > 0;
     applyBtn.disabled = !canApply;
-    applyBtn.textContent = '下一档:' + (canApply ? (haste + extraHaste) : 0) + '急速';
+    const nextHaste = canApply ? Math.min(haste + extraHaste, 150) : 0;
+    applyBtn.textContent = '下一档:' + nextHaste + '急速';
   }
 
   // 渲染结果
