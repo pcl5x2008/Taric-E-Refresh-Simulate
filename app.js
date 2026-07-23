@@ -328,7 +328,7 @@ function renderResults(d) {
       const dynamicColor = xGradientColor(d.refreshX);
       sheetHeroNum.textContent = d.refreshX;
       sheetHeroNum.style.color = dynamicColor;
-      sheetHeroTime.textContent = `耗时 ${d.refreshTime.toFixed(3)}s`;
+      sheetHeroTime.textContent = `${d.refreshTime.toFixed(3)}s`;
       sheetHeroTime.style.color = dynamicColor;
       sheetBadge.textContent = d.isHit ? '命中立刻刷新' : `命中后${waitTime}s刷新`;
       sheetBadge.className = `badge-pill ${d.isHit ? 'badge-hit' : 'badge-swing'}`;
@@ -618,11 +618,11 @@ function initMobileBottomSheet() {
     if (shouldExpand) {
       sheet.classList.add('is-expanded');
       handle.setAttribute('aria-expanded', 'true');
-      if (handleText) handleText.textContent = '收起面板 ▼';
+      if (handleText) handleText.textContent = '收起 ▼';
     } else {
       sheet.classList.remove('is-expanded');
       handle.setAttribute('aria-expanded', 'false');
-      if (handleText) handleText.textContent = '弹出面板 ▲';
+      if (handleText) handleText.textContent = '展开 ▲';
     }
   }
 

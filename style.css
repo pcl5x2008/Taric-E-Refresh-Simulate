@@ -332,51 +332,55 @@ select#mode:focus {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    background: linear-gradient(135deg, var(--field) 0%, var(--card) 100%);
-    border: 1px solid var(--card-border);
-    border-radius: 10px;
-    padding: 6px 10px;
-    margin-bottom: 8px;
+    gap: 4px !important;
+    padding: 5px 8px !important;
   }
+
   .sheet-hero-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
   }
+
+  .sheet-hero-text {
+    font-size: 11px !important;
+  }
+
   .sheet-hero-num {
-    font-size: 22px;
-    font-weight: 800;
-    line-height: 1;
-    /* 移除原来的 background-clip 遮罩，改为支持 JS 动态注入的 color 属性 */
-    background: none !important;
-    -webkit-text-fill-color: initial !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
   }
+
   .sheet-hero-bar .badge-pill {
-    font-size: 11.5px;
-    padding: 2px 8px;
-    min-width: 110px;
-    justify-content: center;
-    text-align: center;
+    font-size: 11px !important;
+    padding: 2px 6px !important;
+    min-width: 105px !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
   }
+
   .sheet-hero-time {
-    font-size: 14px;
-    font-weight: 700;
-    white-space: nowrap;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
   }
 
   .sheet-handle {
     display: flex !important;
-    align-items: center;
-    background: rgba(0, 229, 255, 0.12);
-    border: 1px solid var(--neon);
-    border-radius: 14px;
-    padding: 3px 10px;
-    cursor: pointer;
+    align-items: center !important;
+    padding: 3px 8px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    border-radius: 12px !important;
   }
+
   .sheet-handle-text {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--neon);
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
   }
 
   .main-input .card-title {
