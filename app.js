@@ -618,11 +618,11 @@ function initMobileBottomSheet() {
     if (shouldExpand) {
       sheet.classList.add('is-expanded');
       handle.setAttribute('aria-expanded', 'true');
-      if (handleText) handleText.textContent = '收起 ▼';
+      if (handleText) handleText.textContent = '收起面板 ▼';
     } else {
       sheet.classList.remove('is-expanded');
       handle.setAttribute('aria-expanded', 'false');
-      if (handleText) handleText.textContent = '展开 ▲';
+      if (handleText) handleText.textContent = '展开面板 ▲';
     }
   }
 
