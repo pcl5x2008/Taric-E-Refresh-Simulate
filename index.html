@@ -21,7 +21,19 @@
         <p class="doc-line"><span class="badge-doc badge-doc-gold">●</span> QCD 在 AA 后剩余 —— 高攻速低急速A两下Q技能尚未刷新</p>
       </div>
     </div>
-    <div class="card main-input">
+    <div class="card main-input is-expanded" id="mainInputCard">
+      <div class="sheet-hero-bar" id="sheetHeroBar">
+        <div class="sheet-hero-left">
+          <span class="sheet-hero-text" style="font-size: 12px; color: var(--muted);">第</span>
+          <span class="sheet-hero-num" id="sheetHeroNum">--</span>
+          <span class="sheet-hero-text" style="font-size: 12px; color: var(--muted); margin-right: 2px;">次</span>
+          <span class="badge-pill badge-none" id="sheetBadge">计算中</span>
+        </div>
+        <div class="sheet-hero-time" id="sheetHeroTime">-- s</div>
+        <button class="sheet-handle" id="sheetHandle" type="button" aria-expanded="true">
+          <span class="sheet-handle-text" id="sheetHandleText">收起面板 ▼</span>
+        </button>
+      </div>
       <div class="card-title">输入变量</div>
       <div class="input-grid">
         <div class="input-group">
@@ -53,7 +65,7 @@
           <label for="mode">模式</label>
           <select id="mode">
         <option value="0">普通</option>
-        <option value="0.15">纳沃利</option>
+        <option value="0.15">迅刃</option>
           </select>
         </div>
       </div>
@@ -126,29 +138,5 @@
 </div>
 
 <script src="app.js"></script>
-<script>
-// ===== 作者署名：一键复制 =====
-document.querySelectorAll('.chip-copy').forEach(btn => {
-  btn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const text = btn.dataset.copy;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (_) {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      ta.remove();
-    }
-    const old = btn.textContent;
-    btn.textContent = '已复制 ✓';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1400);
-  });
-});
-</script>
 </body>
 </html>

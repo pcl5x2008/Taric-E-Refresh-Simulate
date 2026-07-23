@@ -27,6 +27,12 @@ function xGradientColor(x) {
 let lastExtraHaste = null;
 let lastPrevTierHaste = null;
 
+function vibrate(ms = 8) {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate(ms);
+  }
+}
+
 /**
  * 读取当前模式系数。
  *
@@ -84,318 +90,141 @@ function clampNumber(id, min, max, def) {
   if (rng) rng.value = v;
 }
 
-function calc() {
-  let Level = parseInt(document.getElementById('level').value, 10);
-  if (isNaN(Level) || Level < 1) Level = 1;
-  if (Level > 18) Level = 18;
-
-  let bASraw = parseFloat(document.getElementById('bonusAS').value);
-  if (isNaN(bASraw) || bASraw < 0) bASraw = 0;
-  if (bASraw > 150) bASraw = 150;
-  const bonusAS = bASraw / 100;
-
-  let baseHaste = parseFloat(document.getElementById('baseHaste').value);
-  if (isNaN(baseHaste) || baseHaste < 0) baseHaste = 0;
-  if (baseHaste > 60) baseHaste = 60;
-
-  let haste = parseFloat(document.getElementById('haste').value);
-  if (isNaN(haste) || haste < 0) haste = 0;
-  if (haste > 150) haste = 150;
-
-  // md 规定：标准 0，纳沃利 0.15
-  const coeff = getModeCoeff();
-
-  // md 基础参数中 E_CD_raw = 12。
-  // 这里保留输入框灵活性，但默认/预设会强制到 12。
-  // 若要完全锁死，可删除下面读取逻辑，直接 const E_CD_raw = 12;
-  let E_CD_raw = 12;
-  const eCdEl = document.getElementById('eCdRaw');
-  if (eCdEl) {
-    const v = parseFloat(eCdEl.value);
-    if (!isNaN(v)) E_CD_raw = v;
-  }
-  if (E_CD_raw < 12) E_CD_raw = 12;
-  if (E_CD_raw > 16) E_CD_raw = 16;
-
-  // 9级自然成长攻速成长
-  const growAS =
-    Level === 1
-      ? 0
-      : (GROW_AS_LV18 / 17) *
-        (Level - 1) *
-        (0.7025 + 0.0175 * (Level - 1));
-
-  // 面板属性与普攻耗时计算
+function runSimulation(params) {
+  const { bonusAS, haste, baseHaste, level, eCdRaw, modeCoeff } = params;
+  const growAS = level === 1 ? 0 : (GROW_AS_LV18 / 17) * (level - 1) * (0.7025 + 0.0175 * (level - 1));
   const TotalAS = Math.min((BaseAS + (bonusAS + growAS) * ASRatio) * 2, 3.003);
   const AttackTime = 1 / TotalAS;
 
   const BaseWindup = WindupPct / BaseAS;
-  const CurrentWindup =
-    BaseWindup + WindupMod * (AttackTime * WindupPct - BaseWindup);
+  const CurrentWindup = BaseWindup + WindupMod * (AttackTime * WindupPct - BaseWindup);
   const CurrentBackswing = AttackTime - CurrentWindup;
 
-  // 技能急速与被动减 CD
   const TotalHaste = baseHaste + haste;
   const CDR = TotalHaste / (TotalHaste + 100);
 
   const Q_CD = Q_CD_raw * (1 - CDR);
-  const E_CD = E_CD_raw * (1 - CDR);
-
-  // 被动强化攻击减 CD 量
+  const E_CD = eCdRaw * (1 - CDR);
   const CDPA = 1 + haste / (haste + 100);
 
-  // 连招仿真数组
   const comboTimeArr = [0];
   const CD_initArr = [E_CD];
   const QRemainArr = [Q_CD];
   const QRemainTmpArr = [0];
   const nextAWaitArr = [0];
 
-  const hitRefresh = [];
-  const swingRefresh = [];
-  const finalTime = [];
+  let firstHit = null;
+  let firstSwing = null;
 
   for (let x = 1; x <= MAX_X; x++) {
-    // Last_ComboAttack(x)
     const lastCA = x === 1 ? CurrentWindup : AttackTime;
 
-    // QRemain_tmp(x)
     const qPrev = QRemainArr[x - 1];
-    const qExtra = extraCdReduce(qPrev, coeff, CurrentWindup);
-    const qRemainTmp = Math.max(
-      0,
-      qPrev - lastCA - qExtra - CDPA
-    );
-
+    const qExtra = extraCdReduce(qPrev, modeCoeff, CurrentWindup);
+    const qRemainTmp = Math.max(0, qPrev - lastCA - qExtra - CDPA);
     QRemainTmpArr[x] = qRemainTmp;
 
-    // QRemain(x)
-    let qr;
-    if (x % 2 === 0) {
-      qr = Q_CD;
-    } else {
-      qr = qRemainTmp;
-    }
-    QRemainArr[x] = qr;
-
-    // Trigger(x)
+    QRemainArr[x] = (x % 2 === 0) ? Q_CD : qRemainTmp;
     const trigger = x <= 2 ? 0 : 1 - (x % 2);
-
-    // QCdGap(x)
-    let qcdGap = 0;
-    if (trigger !== 0) {
-      qcdGap = qRemainTmp;
-    }
-
-    // nextAWait(x)
-    const nextAW =
-      (1 - (x % 2)) * Math.max(QCastingTime - CurrentBackswing, 0);
+    const qcdGap = (trigger !== 0) ? qRemainTmp : 0;
+    const nextAW = (1 - (x % 2)) * Math.max(QCastingTime - CurrentBackswing, 0);
     nextAWaitArr[x] = nextAW;
 
-    // comboTime(x)
     const ct = comboTimeArr[x - 1] + lastCA + qcdGap + nextAW;
     comboTimeArr[x] = ct;
-
-    // Last_comboTime(x)
     const lct = ct - comboTimeArr[x - 1];
 
-    // CD_init(x)
     const cdPrev = CD_initArr[x - 1];
-    const cdExtra = extraCdReduce(cdPrev, coeff, CurrentWindup);
+    const cdExtra = extraCdReduce(cdPrev, modeCoeff, CurrentWindup);
     const cd = cdPrev - lct - cdExtra - CDPA;
     CD_initArr[x] = cd;
 
-    // 刷新条件
-    let hitR = 0;
-    let swingR = 0;
-    let ft = null;
-
-    if (cd <= 0) {
-      hitR = 1;
-      ft = comboTimeArr[x];
-    } else if (cd <= CurrentBackswing) {
-      swingR = 1;
-      ft = comboTimeArr[x] + cd;
-    }
-
-    hitRefresh[x] = hitR;
-    swingRefresh[x] = swingR;
-    finalTime[x] = ft;
-  }
-
-  // 找最早命中刷新 / 后摇刷新
-  let firstHitX = null;
-  let firstHitTime = null;
-  let firstSwingX = null;
-  let firstSwingTime = null;
-
-  for (let x = 1; x <= MAX_X; x++) {
-    if (hitRefresh[x] === 1 && firstHitX === null) {
-      firstHitX = x;
-      firstHitTime = finalTime[x];
-    }
-    if (swingRefresh[x] === 1 && firstSwingX === null) {
-      firstSwingX = x;
-      firstSwingTime = finalTime[x];
+    if (cd <= 0 && !firstHit) {
+      firstHit = { x, time: ct, isHit: true };
+    } else if (cd > 0 && cd <= CurrentBackswing && !firstSwing) {
+      firstSwing = { x, time: ct + cd, isHit: false };
     }
   }
 
-  let refreshX = null;
-  let refreshTime = null;
-  let isHit = false;
-
-  if (firstHitX !== null && firstSwingX !== null) {
-    if (firstHitX <= firstSwingX) {
-      refreshX = firstHitX;
-      refreshTime = firstHitTime;
-      isHit = true;
-    } else {
-      refreshX = firstSwingX;
-      refreshTime = firstSwingTime;
-      isHit = false;
-    }
-  } else if (firstHitX !== null) {
-    refreshX = firstHitX;
-    refreshTime = firstHitTime;
-    isHit = true;
-  } else if (firstSwingX !== null) {
-    refreshX = firstSwingX;
-    refreshTime = firstSwingTime;
-    isHit = false;
+  let refresh = null;
+  if (firstHit && firstSwing) {
+    refresh = (firstHit.x <= firstSwing.x) ? firstHit : firstSwing;
+  } else {
+    refresh = firstHit || firstSwing || null;
   }
 
-  function computeRank(x, isHit) {
-    if (x === null) return null;
-    return x * 2 + (isHit ? 0 : 1);
-  }
+  return {
+    TotalAS, AttackTime, CurrentWindup, CurrentBackswing, CDR, E_CD, CDPA, growAS,
+    comboTimeArr, CD_initArr, QRemainTmpArr, nextAWaitArr, refresh
+  };
+}
+
+function computeRank(x, isHit) {
+  if (x === null) return null;
+  return x * 2 + (isHit ? 0 : 1);
+}
+
+function calc() {
+  const level = Math.min(18, Math.max(1, parseInt(document.getElementById('level').value, 10) || 9));
+  const bonusAS = Math.min(150, Math.max(0, parseFloat(document.getElementById('bonusAS').value) || 0)) / 100;
+  const baseHaste = Math.min(60, Math.max(0, parseFloat(document.getElementById('baseHaste').value) || 0));
+  const haste = Math.min(150, Math.max(0, parseFloat(document.getElementById('haste').value) || 0));
+  const modeCoeff = getModeCoeff();
+  const eCdRaw = Math.min(16, Math.max(12, parseFloat(document.getElementById('eCdRaw')?.value) || 12));
+
+  // 1. 核心仿真
+  const sim = runSimulation({ bonusAS, haste, baseHaste, level, eCdRaw, modeCoeff });
+  const { refresh, TotalAS, AttackTime, CurrentWindup, CurrentBackswing, CDR, E_CD, CDPA, growAS, CD_initArr, QRemainTmpArr, nextAWaitArr } = sim;
+
+  const refreshX = refresh ? refresh.x : null;
+  const refreshTime = refresh ? refresh.time : null;
+  const isHit = refresh ? refresh.isHit : false;
   const currentRank = computeRank(refreshX, isHit);
 
-  /**
-   * 用于二分搜索的仿真函数。
-   * 返回最早触发刷新的次数与类型。
-   */
-  function simulate(bAS, h) {
-    const totalH = baseHaste + h;
-    const cdr = totalH / (totalH + 100);
-
-    const tAS = Math.min((BaseAS + (bAS + growAS) * ASRatio) * 2, 3.003);
-    const at = 1 / tAS;
-
-    const bw = WindupPct / BaseAS;
-    const cw = bw + WindupMod * (at * WindupPct - bw);
-    const cbs = at - cw;
-
-    const qcd = Q_CD_raw * (1 - cdr);
-    const ecd = E_CD_raw * (1 - cdr);
-    const cdpa = 1 + h / (h + 100);
-
-    let qr = qcd;
-    let ct = 0;
-    let cd = ecd;
-
-    for (let i = 1; i <= MAX_X; i++) {
-      const lca = i === 1 ? cw : at;
-
-      const qPrev = qr;
-      const qExtra = extraCdReduce(qPrev, coeff, cw);
-      const qTmp = Math.max(0, qPrev - lca - qExtra - cdpa);
-
-      if (i % 2 === 0) {
-        qr = qcd;
-      } else {
-        qr = qTmp;
-      }
-
-      const tr = i <= 2 ? 0 : 1 - (i % 2);
-
-      let qg = 0;
-      if (tr !== 0) {
-        qg = qTmp;
-      }
-
-      const nw =
-        (1 - (i % 2)) * Math.max(QCastingTime - cbs, 0);
-
-      const prev = ct;
-      ct = ct + lca + qg + nw;
-      const lct = ct - prev;
-
-      const cdPrev = cd;
-      const cdExtra = extraCdReduce(cdPrev, coeff, cw);
-      cd = cdPrev - lct - cdExtra - cdpa;
-
-      if (cd <= 0) {
-        return { x: i, isHit: true };
-      }
-      if (cd > 0 && cd <= cbs) {
-        return { x: i, isHit: false };
-      }
-    }
-
-    return null;
-  }
-
-  // 额外攻速冗余：在当前刷新次数不变的前提下，还能浪费多少额外攻速
+  // 2. 额外攻速冗余：在当前刷新次数不变的前提下，还能浪费多少额外攻速
   let redundantAS = null;
-
   if (refreshX !== null) {
-    const maxBonusAS = Math.max(
-      0,
-      (3.003 / 2 - BaseAS) / ASRatio - growAS
-    );
-
-    let lo = bonusAS;
-    let hi = Math.max(bonusAS + 0.001, maxBonusAS);
-    let mid;
-
+    const maxBonusAS = Math.max(0, (3.003 / 2 - BaseAS) / ASRatio - growAS);
+    let lo = bonusAS, hi = Math.max(bonusAS + 0.001, maxBonusAS);
     while (hi - lo > 0.0001) {
-      mid = (lo + hi) / 2;
-      const r = simulate(mid, haste);
-
-      if (r !== null && r.x === refreshX && r.isHit === isHit) {
-        lo = mid;
-      } else {
-        hi = mid;
-      }
+      const mid = (lo + hi) / 2;
+      const r = runSimulation({ bonusAS: mid, haste, baseHaste, level, eCdRaw, modeCoeff }).refresh;
+      if (r && r.x === refreshX && r.isHit === isHit) lo = mid;
+      else hi = mid;
     }
-
-    redundantAS = Math.max(
-      0,
-      Math.min(lo - bonusAS, maxBonusAS - bonusAS)
-    );
+    redundantAS = Math.max(0, Math.min(lo - bonusAS, maxBonusAS - bonusAS));
   }
 
-  function findMinimalHaste(bAS, startHaste, rank) {
-    const maxHaste = Math.min(startHaste + 100, 150);
-    for (let h = startHaste; h <= maxHaste; h++) {
-      const r = simulate(bAS, h);
-      if (r && computeRank(r.x, r.isHit) < rank) {
-        return h - startHaste;
-      }
-    }
-    return null;
-  }
-
+  // 3. 寻找下一档急速
   let extraHaste = null;
-
   if (refreshX !== null && currentRank !== null && currentRank > 2) {
-    extraHaste = findMinimalHaste(bonusAS, haste, currentRank);
-  }
-
-  function prevTierFloorHaste(bAS, h, rank) {
-    if (rank === null || rank >= 21) return null;
-    const targetRank = rank + 1;
-    for (let hh = 0; hh <= h; hh++) {
-      const r = simulate(bAS, hh);
-      if (r && computeRank(r.x, r.isHit) === targetRank) {
-        return hh;
+    const maxH = Math.min(haste + 100, 150);
+    for (let h = haste; h <= maxH; h++) {
+      const r = runSimulation({ bonusAS, haste: h, baseHaste, level, eCdRaw, modeCoeff }).refresh;
+      if (r && computeRank(r.x, r.isHit) < currentRank) {
+        extraHaste = h - haste;
+        break;
       }
     }
-    return null;
   }
 
+  // 4. 寻找上一档急速
+  let prevTierHaste = null;
+  if (currentRank !== null && currentRank < 21) {
+    const targetRank = currentRank + 1;
+    for (let h = 0; h <= haste; h++) {
+      const r = runSimulation({ bonusAS, haste: h, baseHaste, level, eCdRaw, modeCoeff }).refresh;
+      if (r && computeRank(r.x, r.isHit) === targetRank) {
+        prevTierHaste = h;
+        break;
+      }
+    }
+  }
+
+  // 按钮状态
   lastExtraHaste = extraHaste;
-  lastPrevTierHaste = prevTierFloorHaste(bonusAS, haste, currentRank);
+  lastPrevTierHaste = prevTierHaste;
+
   const prevBtn = document.getElementById('prevTierBtn');
   if (prevBtn) {
     prevBtn.disabled = lastPrevTierHaste === null;
@@ -406,126 +235,111 @@ function calc() {
   if (applyBtn) {
     const canApply = extraHaste !== null && extraHaste > 0;
     applyBtn.disabled = !canApply;
-    const nextHaste = canApply ? Math.min(haste + extraHaste, 150) : 0;
-    applyBtn.textContent = '下一档:' + nextHaste + '急速';
+    applyBtn.textContent = '下一档:' + (canApply ? Math.min(haste + extraHaste, 150) : 0) + '急速';
   }
 
-  // 渲染结果
-  let resultHtml = '';
+  // 5. 渲染结果
+  renderResults({ refreshX, refreshTime, isHit, CD_initArr, redundantAS, nextAWaitArr, QRemainTmpArr, extraHaste, TotalAS, AttackTime, CurrentWindup, CurrentBackswing, E_CD, eCdRaw, CDR, CDPA });
+}
 
-  if (refreshX !== null) {
-    const waitTime = Math.max(0, CD_initArr[refreshX]).toFixed(3);
+function renderResults(d) {
+  const resultArea = document.getElementById('resultArea');
+  if (!resultArea) return;
 
-    const cond = isHit ? '命中立刻刷新' : `命中后${waitTime}s刷新`;
-    const condCls = isHit ? 'badge-hit' : 'badge-swing';
-    const condTextCls = isHit ? 'green-text' : 'gold-text';
+  if (d.refreshX !== null) {
+    const waitTime = Math.max(0, d.CD_initArr[d.refreshX]).toFixed(3);
+    const cond = d.isHit ? '命中立刻刷新' : `命中后${waitTime}s刷新`;
+    const condCls = d.isHit ? 'badge-hit' : 'badge-swing';
+    const extraLabel = d.isHit ? '少A一次还需' : '命中刷新还需';
+    const extraVal = d.extraHaste !== null ? '+' + d.extraHaste + ' 急速' : (d.isHit ? '已无法减少' : '无法达成');
 
-    const extraLabel = isHit ? '少A一次还需' : '命中刷新还需';
-    const extraVal =
-      extraHaste !== null
-        ? '+' + extraHaste + ' 急速'
-        : isHit
-          ? '已无法减少'
-          : '无法达成';
-
-    resultHtml += `
+    resultArea.innerHTML = `
       <div class="result-hero">
         <div class="hero-left">
           <div class="hero-stat">
             <span class="hero-label">第</span>
-            <span class="hero-number" style="color:${xGradientColor(refreshX)}">${refreshX}</span>
+            <span class="hero-number" style="color:${xGradientColor(d.refreshX)}">${d.refreshX}</span>
             <span class="hero-label">次</span>
           </div>
           <div class="hero-meta">
             <span class="badge-pill ${condCls}">${cond}</span>
-            <span class="hero-time ${condTextCls}">耗时 ${refreshTime.toFixed(3)}s</span>
+            <span class="hero-time" style="color:${xGradientColor(d.refreshX)}">耗时 ${d.refreshTime.toFixed(3)}s</span>
           </div>
         </div>
-
         <div class="hero-right">
           <div class="hero-r-item">
             <div class="hero-r-label">额外攻速冗余</div>
-            <div class="hero-r-value ${
-              redundantAS !== null && redundantAS >= 0.1
-                ? 'green-text'
-                : 'gold-text'
-            }">
-              ${redundantAS !== null ? (Math.max(0, redundantAS) * 100).toFixed(1) : '-'}%
-            </div>
+            <div class="hero-r-value ${d.redundantAS !== null && d.redundantAS >= 0.1 ? 'green-text' : 'gold-text'}">${d.redundantAS !== null ? (Math.max(0, d.redundantAS) * 100).toFixed(1) : '-'}%</div>
           </div>
-
           <div class="hero-r-item">
             <div class="hero-r-label">Q 施法超出后摇</div>
-            <div class="hero-r-sub ${nextAWaitArr[2] !== 0 ? 'gold-text' : ''}">
-              ${nextAWaitArr[2].toFixed(3)}s
-            </div>
+            <div class="hero-r-sub ${d.nextAWaitArr[2] !== 0 ? 'gold-text' : ''}">${d.nextAWaitArr[2].toFixed(3)}s</div>
           </div>
-
           <div class="hero-r-item">
             <div class="hero-r-label">${extraLabel}</div>
-            <div class="hero-r-value ${
-              extraHaste !== null && extraHaste > 0
-                ? 'green-text'
-                : 'red-text'
-            }">
-              ${extraVal}
-            </div>
+            <div class="hero-r-value ${d.extraHaste !== null && d.extraHaste > 0 ? 'green-text' : 'red-text'}">${extraVal}</div>
           </div>
-
           <div class="hero-r-item">
             <div class="hero-r-label">QCD 在 AA 后剩余</div>
-            <div class="hero-r-sub ${QRemainTmpArr[2] !== 0 ? 'gold-text' : ''}">
-              ${QRemainTmpArr[2].toFixed(3)}s
-            </div>
+            <div class="hero-r-sub ${d.QRemainTmpArr[2] !== 0 ? 'gold-text' : ''}">${d.QRemainTmpArr[2].toFixed(3)}s</div>
           </div>
         </div>
       </div>
-
       <div class="result-grid">
         <div class="result-item">
           <div class="label">总攻速</div>
-          <div class="value">${TotalAS.toFixed(3)} /s</div>
-          <div class="detail">间隔 ${AttackTime.toFixed(3)}s</div>
+          <div class="value">${d.TotalAS.toFixed(3)} /s</div>
+          <div class="detail">间隔 ${d.AttackTime.toFixed(3)}s</div>
         </div>
-
         <div class="result-item">
           <div class="label">前摇 / 后摇</div>
-          <div class="value sm">
-            ${CurrentWindup.toFixed(3)}s /
-            <span class="${CurrentBackswing <= 0.25 ? 'gold-text' : ''}">
-              ${CurrentBackswing.toFixed(3)}s
-            </span>
-          </div>
+          <div class="value sm">${d.CurrentWindup.toFixed(3)}s / <span class="${d.CurrentBackswing <= 0.25 ? 'gold-text' : ''}">${d.CurrentBackswing.toFixed(3)}s</span></div>
         </div>
-
         <div class="result-item">
           <div class="label">E 冷却（实际）</div>
-          <div class="value sm">${E_CD.toFixed(3)} s</div>
-          <div class="detail">基础 ${E_CD_raw}s · ${(CDR * 100).toFixed(1)}% CDR</div>
+          <div class="value sm">${d.E_CD.toFixed(3)} s</div>
+          <div class="detail">基础 ${d.eCdRaw}s · ${(d.CDR * 100).toFixed(1)}% CDR</div>
         </div>
-
         <div class="result-item">
           <div class="label">被动减 CD</div>
-          <div class="value">${CDPA.toFixed(3)} s</div>
-          <div class="detail">每次命中减 ${CDPA.toFixed(2)}s</div>
+          <div class="value">${d.CDPA.toFixed(3)} s</div>
+          <div class="detail">每次命中减 ${d.CDPA.toFixed(2)}s</div>
         </div>
       </div>
     `;
   } else {
-    resultHtml += `
+    resultArea.innerHTML = `
       <div class="result-hero">
         <div class="hero-stat">
-          <span class="hero-label" style="font-size:20px;color:var(--muted);">
-            10 次连招内未触发刷新
-          </span>
+          <span class="hero-label" style="font-size:20px;color:var(--muted);">10 次连招内未触发刷新</span>
         </div>
       </div>
     `;
   }
 
-  const resultArea = document.getElementById('resultArea');
-  if (resultArea) {
-    resultArea.innerHTML = resultHtml;
+  // 更新移动端底部 Bar 状态
+  const sheetHeroNum = document.getElementById('sheetHeroNum');
+  const sheetBadge = document.getElementById('sheetBadge');
+  const sheetHeroTime = document.getElementById('sheetHeroTime');
+
+  if (sheetHeroNum && sheetHeroTime && sheetBadge) {
+    if (d.refreshX !== null) {
+      const waitTime = Math.max(0, d.CD_initArr[d.refreshX]).toFixed(3);
+      const dynamicColor = xGradientColor(d.refreshX);
+      sheetHeroNum.textContent = d.refreshX;
+      sheetHeroNum.style.color = dynamicColor;
+      sheetHeroTime.textContent = `耗时 ${d.refreshTime.toFixed(3)}s`;
+      sheetHeroTime.style.color = dynamicColor;
+      sheetBadge.textContent = d.isHit ? '命中立刻刷新' : `命中后${waitTime}s刷新`;
+      sheetBadge.className = `badge-pill ${d.isHit ? 'badge-hit' : 'badge-swing'}`;
+    } else {
+      sheetHeroNum.textContent = '--';
+      sheetHeroNum.style.color = 'var(--text)';
+      sheetHeroTime.textContent = '-- s';
+      sheetHeroTime.style.color = 'var(--muted)';
+      sheetBadge.textContent = '未刷新';
+      sheetBadge.className = 'badge-pill badge-none';
+    }
   }
 }
 
@@ -536,7 +350,10 @@ function setInput(id, val) {
   const rng = document.getElementById(id + 'Range');
 
   num.value = val;
-  if (rng) rng.value = val;
+  if (rng) {
+    rng.value = val;
+    updateRangeTrack(rng);
+  }
 }
 
 function feedbackAfterApply() {
@@ -550,13 +367,7 @@ function feedbackAfterApply() {
   hero.addEventListener('animationend', () => {
     hero.classList.remove('flash');
   }, { once: true });
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (window.matchMedia('(max-width: 900px)').matches) {
-    resultArea.scrollIntoView({
-      behavior: reduceMotion ? 'auto' : 'smooth',
-      block: 'nearest'
-    });
-  }
+
 }
 
 /**
@@ -684,23 +495,143 @@ function applyPreset(type) {
   calc();
 }
 
+function updateRangeTrack(rangeEl) {
+  const min = parseFloat(rangeEl.min) || 0;
+  const max = parseFloat(rangeEl.max) || 100;
+  const val = parseFloat(rangeEl.value) || 0;
+  const percentage = ((val - min) / (max - min)) * 100;
+  rangeEl.style.background = `linear-gradient(to right, var(--neon) 0%, var(--neon) ${percentage}%, var(--field-border) ${percentage}%, var(--field-border) 100%)`;
+}
+
 function bindInput(id) {
   const num = document.getElementById(id);
   const rng = document.getElementById(id + 'Range');
+  if (!num) return;
 
-  if (num) {
-    num.addEventListener('input', () => {
-      if (rng) rng.value = num.value;
+  // 初始值 + 事件源标记
+  num._prevVal = parseFloat(num.value);
+  let inputSource = null;
+  let srcTimer = null;
+
+  // ── 键盘：上/左 = 减小，下/右 = 增大 ──
+  num.addEventListener('keydown', (e) => {
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+    inputSource = 'keyboard';
+    clearTimeout(srcTimer);
+    srcTimer = setTimeout(() => { inputSource = null; }, 80);
+
+    const step = parseFloat(num.step) || 1;
+    const min = parseFloat(num.min);
+    const max = parseFloat(num.max);
+    const val = parseFloat(num.value) || 0;
+    const dec = e.key === 'ArrowUp' || e.key === 'ArrowLeft';
+    const newVal = dec ? Math.max(min, val - step) : Math.min(max, val + step);
+    if (newVal === val) return;
+    num._prevVal = newVal;
+    num.value = newVal;
+    if (rng) { rng.value = newVal; updateRangeTrack(rng); }
+    calc();
+  });
+
+  // ── 滚轮：上滚 = 减小，下滚 = 增大（数字框） ──
+  num.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    inputSource = 'wheel';
+    clearTimeout(srcTimer);
+    srcTimer = setTimeout(() => { inputSource = null; }, 80);
+
+    const step = parseFloat(num.step) || 1;
+    const min = parseFloat(num.min);
+    const max = parseFloat(num.max);
+    const val = parseFloat(num.value) || 0;
+    const newVal = e.deltaY < 0 ? Math.max(min, val - step) : Math.min(max, val + step);
+    if (newVal === val) return;
+    num._prevVal = newVal;
+    num.value = newVal;
+    if (rng) { rng.value = newVal; updateRangeTrack(rng); }
+    calc();
+  }, { passive: false });
+
+  // ── input：处理输入与原生上下箭头点击 ──
+  num.addEventListener('input', function () {
+    // 键盘/滚轮已经处理完毕，直接更新 prevVal
+    if (inputSource === 'keyboard' || inputSource === 'wheel') {
+      num._prevVal = parseFloat(this.value);
+      return;
+    }
+
+    const currVal = parseFloat(this.value);
+    if (isNaN(currVal)) return;
+
+    const min = parseFloat(this.min);
+    const max = parseFloat(this.max);
+
+    // 只要数值在合法区间内，就同步给滑块并触发计算
+    if (currVal >= min && currVal <= max) {
+      num._prevVal = currVal;
+      if (rng) {
+        rng.value = currVal;
+        updateRangeTrack(rng);
+      }
       calc();
-    });
-  }
+    }
+  });
 
-  if (rng && num) {
+  // ── 拉条 ──
+  if (rng) {
+    updateRangeTrack(rng);
     rng.addEventListener('input', () => {
       num.value = rng.value;
+      updateRangeTrack(rng);
       calc();
+      vibrate(5);
     });
+
+    // 滚轮：上滚 = 减小，下滚 = 增大（拉条）
+    rng.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const step = parseFloat(num.step) || 1;
+      const min = parseFloat(num.min);
+      const max = parseFloat(num.max);
+      const val = parseFloat(rng.value) || 0;
+      const newVal = e.deltaY < 0 ? Math.max(min, val - step) : Math.min(max, val + step);
+      if (newVal === val) return;
+      rng.value = newVal;
+      num.value = newVal;
+      num._prevVal = newVal;
+      updateRangeTrack(rng);
+      calc();
+    }, { passive: false });
   }
+}
+
+function initMobileBottomSheet() {
+  const sheet = document.getElementById('mainInputCard');
+  const handle = document.getElementById('sheetHandle');
+  const handleText = document.getElementById('sheetHandleText');
+
+  if (!sheet || !handle) return;
+
+  function toggleSheet(expand) {
+    const shouldExpand = expand !== undefined ? expand : !sheet.classList.contains('is-expanded');
+    if (shouldExpand) {
+      sheet.classList.add('is-expanded');
+      handle.setAttribute('aria-expanded', 'true');
+      if (handleText) handleText.textContent = '收起面板 ▼';
+    } else {
+      sheet.classList.remove('is-expanded');
+      handle.setAttribute('aria-expanded', 'false');
+      if (handleText) handleText.textContent = '弹出面板 ▲';
+    }
+  }
+
+  handle.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSheet();
+    vibrate(8);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -747,13 +678,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const applyBtn = document.getElementById('applyHasteBtn');
   if (applyBtn) {
-    applyBtn.addEventListener('click', applyExtraHaste);
+    applyBtn.addEventListener('click', () => { applyExtraHaste(); vibrate(12); });
   }
 
   const prevBtn = document.getElementById('prevTierBtn');
   if (prevBtn) {
-    prevBtn.addEventListener('click', dropToPrevTier);
+    prevBtn.addEventListener('click', () => { dropToPrevTier(); vibrate(12); });
   }
+
+  // 作者署名：一键复制
+  document.querySelectorAll('.chip-copy').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const text = btn.dataset.copy;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (_) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      const old = btn.textContent;
+      btn.textContent = '已复制 ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+    });
+  });
+
+  initMobileBottomSheet();
 
   // 按 md 文档初始化默认状态：
   // Level = 9
